@@ -24,16 +24,12 @@ public class Main {
 	private static final String GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent";
 	// Path to the configuration file -> Must add your Key in this file
 	private static final String CONFIG_FILE = "src/resources/config.properties";
-
 	// Maximum length for conversation history 
 	private static final int MAX_HISTORY_LENGTH = 50; 
-
 	// Atomic reference to store the API key in a thread-safe manner
 	private static final AtomicReference<String> apiKey = new AtomicReference<>();
-
 	// Gson instance for JSON 
 	private static final Gson gson = new Gson();
-
 	//List to keep track of the conversation context
 	private static final ArrayList<String> context = new ArrayList<>();
 
@@ -70,7 +66,7 @@ public class Main {
 		var client = HttpClient.newHttpClient();
 
 		// Build prompt with conversation history
-		String fullPrompt = buildPromptWithHistory(prompt);
+		String fullPrompt = buildPromptWithContext(prompt);
 
 		// Create an HTTP request 
 		var request = HttpRequest.newBuilder()
@@ -92,9 +88,9 @@ public class Main {
 		task.join();
 	}
 
-	// Method to build the prompt including conversation history	
-	private static String buildPromptWithHistory(String prompt) {
-		// Limit conversation history size
+	// Method to build the prompt including conversation context	
+	private static String buildPromptWithContext(String prompt) {
+		// Limit conversation context size
 		if (context.size() > MAX_HISTORY_LENGTH) {
 			context.subList(0, MAX_HISTORY_LENGTH/2).clear();
 		}
@@ -142,7 +138,7 @@ public class Main {
 			}
 			
 			context.remove(context.size() - 1);
-		    buildPromptWithHistory(responseStr.toString());
+		    buildPromptWithContext(responseStr.toString());
 		    
 			System.out.println("answer: " + responseStr);
 			System.out.print("you: ");
