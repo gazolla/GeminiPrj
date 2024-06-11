@@ -18,11 +18,59 @@ import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 
+enum HttpStatus {
+	OK(200, "OK"),
+	BAD_REQUEST(400, "Bad Request"),
+	UNAUTHORIZED(401, "Unauthorized"),
+	FORBIDDEN(403, "Forbidden"),
+	NOT_FOUND(404, "Not Found"),
+	INTERNAL_SERVER_ERROR(500, "Internal Server Error");
+
+	private final int code;
+	private final String message;
+
+	HttpStatus(int code, String message) {
+		this.code = code;
+		this.message = message;
+	}
+
+	public int getCode() { return code;	}
+	public String getMessage() { return message; }
+	
+	public static String getMessageFromCode(int code) {
+        for (HttpStatus status : HttpStatus.values()) {
+            if (status.getCode() == code) {
+                return status.getMessage();
+            }
+        }
+        return "Unknown Status"; // Return default message if code is not found
+    }
+}
+
 public class Main {
 
-	// URL for the Gemini API
-	private static final String GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent";
-	// Path to the configuration file -> Must add your Key in this file
+	/*****************************************************************
+	 * URL for the Gemini API 
+	 * 
+	 * https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent
+	 * 
+	 * gemini-1.5-flash: This is a powerful, large language model (LLM) that's 
+	 * particularly well-suited for tasks involving factual accuracy and 
+	 * complex reasoning. It's known for its high-quality responses and its 
+	 * ability to handle a wide range of prompts.
+	 * 
+	 * 
+	 * https://generativelanguage.googleapis.com/v1beta/models/text-bison@001:streamGenerateContent
+	 * 
+	 * text-bison@001: This is a smaller, more specialized model designed primarily 
+	 * for conversational AI and chatbot applications. It focuses on generating 
+	 * natural-sounding, human-like responses that are appropriate for dialogue.
+	 * 
+	 ************************************************************* */
+	 private static final String GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent";
+	//private static final String GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/text-bison@001:streamGenerateContent";
+	
+	 // Path to the configuration file -> Must add your Key in this file
 	private static final String CONFIG_FILE = "src/resources/config.properties";
 	// Maximum length for conversation history 
 	private static final int MAX_HISTORY_LENGTH = 50; 
@@ -72,7 +120,7 @@ public class Main {
 		var request = HttpRequest.newBuilder()
 				.uri(URI.create(GEMINI_URL + "?alt=sse&key=" + apiKey.get()))
 				.POST(HttpRequest.BodyPublishers.ofString(buildRequestBody(fullPrompt)))
-				.headers("Content-Type", "application/json; charset=UTF-8")
+				.headers("Content-Type", "application/json")
 				.build();
 
 		// Send the request asynchronously 
@@ -97,25 +145,39 @@ public class Main {
 		context.add("Answer the question Briefly: "+prompt); 
 		return context
 				.stream()
-                .collect(Collectors.joining("\n"));
-		 
+				.collect(Collectors.joining("\n"));
+
 	}
 
 	// Method to build the JSON body for the request
 	private static String buildRequestBody(String prompt) {
+		// Add configuration settings here
+		/*GenerationConfig config = new GenerationConfig(
+				1, // temperature
+				0.95, // topP
+				64, // topK
+				8192, // maxOutputTokens
+				"text/plain" // responseMIMEType
+				);*/
 		GeminiRequest request = new GeminiRequest();
 		Content content = new Content();
 		Part part = new Part();
 		part.text = prompt; // Set the prompt text
 		content.parts = List.of(part);
+		 content.role = "user"; 
 		request.contents = new Content[] {content};
-		return gson.toJson(request);
+		//request.generationConfig = config;
+		// Print the JSON request body for debugging
+        //System.out.println("Request Body:");
+        //System.out.println(gson.toJson(request));
+
+        return gson.toJson(request);
 	}
 
 	// Method to process response 
 	private static void processResponse(HttpResponse<String> response) throws IOException {
 		if (response.statusCode() != 200) {
-			System.out.println("Error: " + response.statusCode());
+			System.out.println("Error: " + response.statusCode()+ " - " + HttpStatus.getMessageFromCode(response.statusCode()));
 			return;
 		}
 
@@ -136,10 +198,10 @@ public class Main {
 			} catch (JsonSyntaxException | IOException e) {
 				e.printStackTrace();
 			}
-			
+
 			context.remove(context.size() - 1);
-		    buildPromptWithContext(responseStr.toString());
-		    
+			buildPromptWithContext(responseStr.toString());
+
 			System.out.println("answer: " + responseStr);
 			System.out.print("you: ");
 		});
@@ -161,6 +223,7 @@ class Candidate {
 
 class GeminiRequest {
 	public Content[] contents;
+	public GenerationConfig generationConfig;
 }
 
 class Content {
@@ -177,4 +240,11 @@ class UsageMetadata {
 	public int candidatesTokenCount;
 	public int totalTokenCount;
 }
+
+record GenerationConfig (
+		double temperature,
+		double topP,
+		int topK,
+		int maxOutputTokens,
+		String responseMIMEType) {}
 
