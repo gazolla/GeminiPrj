@@ -21,19 +21,19 @@ public class Main {
 	// Path to the configuration file -> Must add your Key in this file
 	private static final String CONFIG_FILE = "src/resources/config.properties";
 	
-	// Maximum length for conversation history to prevent it from becoming too large
-    private static final int MAX_HISTORY_LENGTH = 100; // Limit conversation history size
+	// Maximum length for conversation history 
+    private static final int MAX_HISTORY_LENGTH = 100; 
 
     // Atomic reference to store the API key in a thread-safe manner
 	private static final AtomicReference<String> apiKey = new AtomicReference<>();
 	
-	 // Gson instance for JSON serialization and deserialization
+	 // Gson instance for JSON 
 	private static final Gson gson = new Gson();
 	
 	// StringBuilder to keep track of the conversation history
 	private static final StringBuilder conversationHistory = new StringBuilder();
 
-	// Method to load google key API from the config file
+	// Method to load google key API 
 	private static void config() throws IOException{
 		 Properties prop = new Properties();
 	        try (var reader = new BufferedReader(new FileReader(CONFIG_FILE))) {
@@ -55,7 +55,7 @@ public class Main {
 			if (ask.equals("quit")) {
 				System.out.println("answer: bye");
 			} else {
-				sendRequest(ask); // Send request to the Gemini API for non-quit input
+				sendRequest(ask); // Send request to the Gemini API 
 			}
 		}
 		scan.close();
@@ -68,18 +68,18 @@ public class Main {
 		// Build prompt with conversation history
 		String fullPrompt = buildPromptWithHistory(prompt);
 
-		 // Create an HTTP request with the prompt
+		 // Create an HTTP request 
 		var request = HttpRequest.newBuilder()
 				.uri(URI.create(GEMINI_URL + "?alt=sse&key=" + apiKey.get()))
 				.POST(HttpRequest.BodyPublishers.ofString(buildRequestBody(fullPrompt)))
 				.headers("Content-Type", "application/json")
 				.build();
 
-		// Send the request asynchronously and process the response
+		// Send the request asynchronously 
 		var task = client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
 				.thenAccept(t -> {
 					try {
-						processResponse(t); // Process the response once received
+						processResponse(t); // Process the response 
 					} catch (Exception e) {
 						System.out.println("Error: " + e.getMessage());	
 					}
@@ -101,7 +101,7 @@ public class Main {
         return conversationHistory.toString();
 	}
 
-	 // Method to build the JSON body for the HTTP request
+	 // Method to build the JSON body for the request
 	private static String buildRequestBody(String prompt) {
 		GeminiRequest request = new GeminiRequest();
 		Content content = new Content();
@@ -112,7 +112,7 @@ public class Main {
 		return gson.toJson(request);
 	}
 
-	 // Method to process the HTTP response from the Gemini API
+	 // Method to process response 
 	private static void processResponse(HttpResponse<String> response) throws IOException {
 		Executors.newSingleThreadExecutor().submit(() -> {
 
